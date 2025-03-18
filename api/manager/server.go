@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
 	"github.com/gorilla/mux"
 	managerdb "github.com/spiffe/tornjak/pkg/manager/db"
 )
@@ -43,12 +42,14 @@ func cors(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func retError(w http.ResponseWriter, emsg string, status int) {
-	w.Header().Set("Content-Type", "text/html; charset=ascii")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type,access-control-allow-origin, access-control-allow-headers")
-	http.Error(w, emsg, status)
+func (s *Server) retError(w http.ResponseWriter, emsg string, status int) {
+    w.Header().Set("Content-Type", "text/html; charset=ascii")
+    w.Header().Set("Access-Control-Allow-Origin", "*")
+    w.Header().Set("Access-Control-Allow-Headers", "Content-Type,access-control-allow-origin, access-control-allow-headers")
+    http.Error(w, emsg, status)
 }
+
+// comment
 
 func copyHeader(dst, src http.Header) {
 	for k, vv := range src {
