@@ -24,18 +24,24 @@ type Server struct {
 }
 
 // Handle preflight checks
-func corsHandler(f func(w http.ResponseWriter, r *http.Request)) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "OPTIONS" {
-			cors(w, r)
-			return
-		} else {
-			f(w, r)
-		}
-	}
+func (s *Server) corsHandler(f http.HandlerFunc) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        if r.Method == "OPTIONS" {
+            s.cors(w, r)  
+            return
+        }
+        f(w, r)
+    }
 }
 
-func cors(w http.ResponseWriter, _ *http.Request) {
+// func cors(w http.ResponseWriter, _ *http.Request) {
+// 	w.Header().Set("Content-Type", "text/html; charset=ascii")
+// 	w.Header().Set("Access-Control-Allow-Origin", "*")
+// 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type,access-control-allow-origin, access-control-allow-headers")
+// 	w.WriteHeader(http.StatusOK)
+// }
+
+func (s *Server) cors(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=ascii")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type,access-control-allow-origin, access-control-allow-headers")
@@ -49,7 +55,6 @@ func (s *Server) retError(w http.ResponseWriter, emsg string, status int) {
     http.Error(w, emsg, status)
 }
 
-// comment
 
 func copyHeader(dst, src http.Header) {
 	for k, vv := range src {
