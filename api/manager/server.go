@@ -65,80 +65,103 @@ func copyHeader(dst, src http.Header) {
 }
 
 // Returns a post proxy function for tornjak api, where path is the path from the base URL, i.e. "/api/entry/delete"
+
+/*
+	Start refactoring code into methods
+*/
 func (s *Server) apiServerProxyFunc(apiPath string, apiMethod string) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		serverName := vars["server"]
+    return func(w http.ResponseWriter, r *http.Request) {
+        serverName := mux.Vars(r)["server"]
+        sinfo, err := s.getServerInfo(serverName, w)
+        if err != nil {
+            return
+        }
 
-		fmt.Println(serverName)
+        client := s.getHttpClient()
+        s.proxyRequest(client, sinfo, apiPath, apiMethod, w, r)
+    }
+}
 
-		// Get server info
-		sinfo, err := s.db.GetServer(serverName)
-		if err != nil {
-			emsg := fmt.Sprintf("Error getting server info: %v", err.Error())
-			retError(w, emsg, http.StatusBadRequest)
-			return
-		}
+func (s *Server) getServerInfo(serverName string, w http.ResponseWriter) (*ServerInfo, error) {
+}
 
-		// Gather the certs and key into a map
-		cMap := make(map[string]string)
-		cMap["CA"] = string(sinfo.CA)
-		cMap["cert"] = string(sinfo.Cert)
-		cMap["key"] = string(sinfo.Key)
 
-		// Iterate through the map and trim the values for debugging.
-		// Show the endings only
-		for k, v := range cMap {
-			if k == "key" {
-				if len(v) > keyShowLen {
-					cMap[k] = "\n..." + v[len(v)-keyShowLen:]
-				}
-			} else {
-				if len(v) > certShowLen {
-					cMap[k] = "\n..." + v[len(v)-certShowLen:]
-				}
-			}
-		}
-		fmt.Printf("Name:%s\n Address:%s\n TLS:%t, mTLS:%t\n", sinfo.Name, sinfo.Address, sinfo.TLS, sinfo.MTLS)
-		if sinfo.TLS {
-			fmt.Printf("CA:%s\n", cMap["CA"])
-		}
-		if sinfo.MTLS {
-			fmt.Printf("Cert:%s\n Key:%s\n", cMap["cert"], cMap["key"])
-		}
 
-		client, err := sinfo.HttpClient()
-		if err != nil {
-			emsg := fmt.Sprintf("Error initializing server client: %v", err.Error())
-			retError(w, emsg, http.StatusBadRequest)
-			return
-		}
 
-		req, err := http.NewRequest(apiMethod, strings.TrimSuffix(sinfo.Address, "/") + apiPath, r.Body)
-		if err != nil {
-			emsg := fmt.Sprintf("Error creating http request: %v", err.Error())
-			retError(w, emsg, http.StatusBadRequest)
-			return
-		}
+// func (s *Server) apiServerProxyFunc(apiPath string, apiMethod string) func(w http.ResponseWriter, r *http.Request) {
+// 	return func(w http.ResponseWriter, r *http.Request) {
+// 		vars := mux.Vars(r)
+// 		serverName := vars["server"]
+
+// 		fmt.Println(serverName)
+
+// 		// Get server info
+// 		sinfo, err := s.db.GetServer(serverName)
+// 		if err != nil {
+// 			emsg := fmt.Sprintf("Error getting server info: %v", err.Error())
+// 			retError(w, emsg, http.StatusBadRequest)
+// 			return
+// 		}
+
+// 		// Gather the certs and key into a map
+// 		cMap := make(map[string]string)
+// 		cMap["CA"] = string(sinfo.CA)
+// 		cMap["cert"] = string(sinfo.Cert)
+// 		cMap["key"] = string(sinfo.Key)
+
+// 		// Iterate through the map and trim the values for debugging.
+// 		// Show the endings only
+// 		for k, v := range cMap {
+// 			if k == "key" {
+// 				if len(v) > keyShowLen {
+// 					cMap[k] = "\n..." + v[len(v)-keyShowLen:]
+// 				}
+// 			} else {
+// 				if len(v) > certShowLen {
+// 					cMap[k] = "\n..." + v[len(v)-certShowLen:]
+// 				}
+// 			}
+// 		}
+// 		fmt.Printf("Name:%s\n Address:%s\n TLS:%t, mTLS:%t\n", sinfo.Name, sinfo.Address, sinfo.TLS, sinfo.MTLS)
+// 		if sinfo.TLS {
+// 			fmt.Printf("CA:%s\n", cMap["CA"])
+// 		}
+// 		if sinfo.MTLS {
+// 			fmt.Printf("Cert:%s\n Key:%s\n", cMap["cert"], cMap["key"])
+// 		}
+
+// 		client, err := sinfo.HttpClient()
+// 		if err != nil {
+// 			emsg := fmt.Sprintf("Error initializing server client: %v", err.Error())
+// 			retError(w, emsg, http.StatusBadRequest)
+// 			return
+// 		}
+
+// 		req, err := http.NewRequest(apiMethod, strings.TrimSuffix(sinfo.Address, "/") + apiPath, r.Body)
+// 		if err != nil {
+// 			emsg := fmt.Sprintf("Error creating http request: %v", err.Error())
+// 			retError(w, emsg, http.StatusBadRequest)
+// 			return
+// 		}
 
 		
-		resp, err := client.Do(req)
-		if err != nil {
-			emsg := fmt.Sprintf("Error making api call to server: %v", err.Error())
-			retError(w, emsg, http.StatusBadRequest)
-			return
-		}
-		defer resp.Body.Close()
-		copyHeader(w.Header(), resp.Header)
-		w.WriteHeader(resp.StatusCode)
-		_, err = io.Copy(w, resp.Body)
-		if err != nil {
-			emsg := fmt.Sprintf("Error parsing data: %v", err.Error())
-			retError(w, emsg, http.StatusBadRequest)
-			return
-		}
-	}
-}
+// 		resp, err := client.Do(req)
+// 		if err != nil {
+// 			emsg := fmt.Sprintf("Error making api call to server: %v", err.Error())
+// 			retError(w, emsg, http.StatusBadRequest)
+// 			return
+// 		}
+// 		defer resp.Body.Close()
+// 		copyHeader(w.Header(), resp.Header)
+// 		w.WriteHeader(resp.StatusCode)
+// 		_, err = io.Copy(w, resp.Body)
+// 		if err != nil {
+// 			emsg := fmt.Sprintf("Error parsing data: %v", err.Error())
+// 			retError(w, emsg, http.StatusBadRequest)
+// 			return
+// 		}
+// 	}
+// }
 
 // spaHandler implements the http.Handler interface, so we can use it
 // to respond to HTTP requests. The path to the static directory and
