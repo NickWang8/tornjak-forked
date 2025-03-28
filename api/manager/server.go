@@ -69,6 +69,8 @@ func copyHeader(dst, src http.Header) {
 /*
 	Start refactoring code into methods
 */
+
+// Main function that calls the helpers
 func (s *Server) apiServerProxyFunc(apiPath string, apiMethod string) func(w http.ResponseWriter, r *http.Request) {
     return func(w http.ResponseWriter, r *http.Request) {
         serverName := mux.Vars(r)["server"]
@@ -82,7 +84,18 @@ func (s *Server) apiServerProxyFunc(apiPath string, apiMethod string) func(w htt
     }
 }
 
+// Get server info helper function
 func (s *Server) getServerInfo(serverName string, w http.ResponseWriter) (*ServerInfo, error) {
+    sinfo, err := s.db.GetServer(serverName)
+    if err != nil {
+        s.retError(w, fmt.Sprintf("Error getting server info: %v", err), http.StatusBadRequest)
+        return nil, err
+    }
+    return sinfo, nil
+}
+
+func (s *Server) proxyRequest(client *http.Client, sinfo *ServerInfo, apiPath string, apiMethod string, w http.ResponseWriter, r *http.Request) {
+
 }
 
 
