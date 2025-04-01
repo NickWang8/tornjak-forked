@@ -94,8 +94,25 @@ func (s *Server) getServerInfo(serverName string, w http.ResponseWriter) (*Serve
     return sinfo, nil
 }
 
+//Proxy
 func (s *Server) proxyRequest(client *http.Client, sinfo *ServerInfo, apiPath string, apiMethod string, w http.ResponseWriter, r *http.Request) {
+	apiVersion := "v1" // Change this to correct version
+    url := fmt.Sprintf("%s/%s%s", strings.TrimSuffix(sinfo.Address, "/"), apiVersion, apiPath)
+    
+    req, err := http.NewRequest(apiMethod, url, r.Body)
+    if err != nil {
+        s.retError(w, fmt.Sprintf("Error creating http request: %v", err), http.StatusBadRequest)
+        return
+    }
 
+    resp, err := client.Do(req)
+    if err != nil {
+        s.retError(w, fmt.Sprintf("Error making API call: %v", err), http.StatusBadRequest)
+        return
+    }
+    defer resp.Body.Close()
+
+	// # TODO write second half
 }
 
 
