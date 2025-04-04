@@ -70,6 +70,12 @@ func copyHeader(dst, src http.Header) {
 	Start refactoring code into methods
 */
 
+const (
+    ApiVersion  = "v1" 
+    RetryCount  = 3    // Number of times to retry failed API requests
+    RetryDelay  = 500 * time.Millisecond
+)
+
 // Main function that calls the helpers
 func (s *Server) apiServerProxyFunc(apiPath string, apiMethod string) func(w http.ResponseWriter, r *http.Request) {
     return func(w http.ResponseWriter, r *http.Request) {
@@ -96,32 +102,48 @@ func (s *Server) getServerInfo(serverName string, w http.ResponseWriter) (*Serve
     return sinfo, nil
 }
 
-//Proxy
-func (s *Server) proxyRequest(client *http.Client, sinfo *ServerInfo, apiPath string, apiMethod string, w http.ResponseWriter, r *http.Request) {
-	apiVersion := "v1" // Change this to correct version
-    url := fmt.Sprintf("%s/%s%s", strings.TrimSuffix(sinfo.Address, "/"), apiVersion, apiPath)
-    
-    req, err := http.NewRequest(apiMethod, url, r.Body)
-    if err != nil {
-        s.retError(w, fmt.Sprintf("Error creating http request: %v", err), http.StatusBadRequest)
-        return
+// Proxy function with retries
+func (s *Server) proxyRequestWithRetry(client *http.Client, sinfo *ServerInfo, apiPath, apiMethod string, w http.ResponseWriter, r *http.Request) {
+    // Read request body (since it can be read only once)
+    var bodyBytes []byte
+    if r.Body != nil {
+        var err error
+        bodyBytes, err = io.ReadAll(r.Body)
+        if err != nil {
+            s.handleError(w, "Failed to read request body", http.StatusInternalServerError, err)
+            return
+        }
     }
 
-    resp, err := client.Do(req)
-    if err != nil {
-        s.retError(w, fmt.Sprintf("Error making API call: %v", err), http.StatusBadRequest)
-        return
-    }
-    defer resp.Body.Close()
+	// Handle retry logic here
 
-	// # TODO write second half
-	copyHeader(w.Header(), resp.Header)
-    w.WriteHeader(resp.StatusCode)
-    _, err = io.Copy(w, resp.Body)
-    if err != nil {
-        s.retError(w, fmt.Sprintf("Error parsing response: %v", err), http.StatusBadRequest)
-    }
 }
+// func (s *Server) proxyRequest(client *http.Client, sinfo *ServerInfo, apiPath string, apiMethod string, w http.ResponseWriter, r *http.Request) {
+// 	apiVersion := "v1" // Change this to correct version
+//     url := fmt.Sprintf("%s/%s%s", strings.TrimSuffix(sinfo.Address, "/"), apiVersion, apiPath)
+    
+//     req, err := http.NewRequest(apiMethod, url, r.Body)
+//     if err != nil {
+//         s.retError(w, fmt.Sprintf("Error creating http request: %v", err), http.StatusBadRequest)
+//         return
+//     }
+
+//     resp, err := client.Do(req)
+//     if err != nil {
+//         s.retError(w, fmt.Sprintf("Error making API call: %v", err), http.StatusBadRequest)
+//         return
+//     }
+
+//     defer resp.Body.Close()
+
+// 	// # TODO write second half
+// 	copyHeader(w.Header(), resp.Header)
+//     w.WriteHeader(resp.StatusCode)
+//     _, err = io.Copy(w, resp.Body)
+//     if err != nil {
+//         s.retError(w, fmt.Sprintf("Error parsing response: %v", err), http.StatusBadRequest)
+//     }
+// }
 
 // Error handler function
 func (s *Server) handleError(w http.ResponseWriter, msg string, status int, err error) {
