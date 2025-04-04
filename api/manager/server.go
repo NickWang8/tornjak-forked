@@ -76,7 +76,9 @@ func (s *Server) apiServerProxyFunc(apiPath string, apiMethod string) func(w htt
         serverName := mux.Vars(r)["server"]
         sinfo, err := s.getServerInfo(serverName, w)
         if err != nil {
-            return
+            emsg := fmt.Sprintf("Error getting server info: %v", err.Error())
+    		retError(w, emsg, http.StatusBadRequest)
+    		return
         }
 
         client := s.getHttpClient()
@@ -113,6 +115,20 @@ func (s *Server) proxyRequest(client *http.Client, sinfo *ServerInfo, apiPath st
     defer resp.Body.Close()
 
 	// # TODO write second half
+	copyHeader(w.Header(), resp.Header)
+    w.WriteHeader(resp.StatusCode)
+    _, err = io.Copy(w, resp.Body)
+    if err != nil {
+        s.retError(w, fmt.Sprintf("Error parsing response: %v", err), http.StatusBadRequest)
+    }
+}
+
+// Error handler function
+func (s *Server) handleError(w http.ResponseWriter, msg string, status int, err error) {
+    if err != nil {
+        msg = fmt.Sprintf("%s: %v", msg, err)
+    }
+    s.retError(w, msg, status)
 }
 
 
