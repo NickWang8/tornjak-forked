@@ -116,8 +116,37 @@ func (s *Server) proxyRequestWithRetry(client *http.Client, sinfo *ServerInfo, a
     }
 
 	// Handle retry logic here
+	// Retry logic
+    for attempt := 0; attempt <= RetryCount; attempt++ {
+        if attempt > 0 {
+            time.Sleep(RetryDelay)
+        }
 
+        err := s.forwardRequest(client, sinfo, apiPath, apiMethod, w, r, bodyBytes)
+        if err == nil {
+            return // success
+        }
+
+        log.Printf("Attempt %d failed: %v\n", attempt+1, err)
+    }
+    s.handleError(w, "All retries failed", http.StatusBadGateway, nil)
 }
+
+// Core request forwarding logic
+func (s *Server) forwardRequest(client *http.Client, sinfo *ServerInfo, apiPath, apiMethod string, w http.ResponseWriter, r *http.Request, body []byte) error {
+    url := fmt.Sprintf("%s/%s%s", strings.TrimSuffix(sinfo.Address, "/"), ApiVersion, apiPath)
+
+    req, err := http.NewRequest(apiMethod, url, bytes.NewReader(body))
+    if err != nil {
+        return fmt.Errorf("error creating request: %w", err)
+    }
+
+    req.Header = r.Header.Clone()
+
+    // more logic for forwarding logic
+	
+}
+
 // func (s *Server) proxyRequest(client *http.Client, sinfo *ServerInfo, apiPath string, apiMethod string, w http.ResponseWriter, r *http.Request) {
 // 	apiVersion := "v1" // Change this to correct version
 //     url := fmt.Sprintf("%s/%s%s", strings.TrimSuffix(sinfo.Address, "/"), apiVersion, apiPath)
