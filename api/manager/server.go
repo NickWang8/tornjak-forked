@@ -144,7 +144,20 @@ func (s *Server) forwardRequest(client *http.Client, sinfo *ServerInfo, apiPath,
     req.Header = r.Header.Clone()
 
     // more logic for forwarding logic
-	
+	resp, err := client.Do(req)
+    if err != nil {
+        return fmt.Errorf("error sending request to server: %w", err)
+    }
+    defer resp.Body.Close()
+
+    copyHeader(w.Header(), resp.Header)
+    w.WriteHeader(resp.StatusCode)
+    _, err = io.Copy(w, resp.Body)
+    if err != nil {
+        return fmt.Errorf("error copying response body: %w", err)
+    }
+
+    return nil
 }
 
 // func (s *Server) proxyRequest(client *http.Client, sinfo *ServerInfo, apiPath string, apiMethod string, w http.ResponseWriter, r *http.Request) {
