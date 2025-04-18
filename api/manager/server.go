@@ -169,43 +169,6 @@ func (s *Server) handleError(w http.ResponseWriter, msg string, status int, err 
     s.retError(w, msg, status)
 }
 
-// func (s *Server) proxyRequest(client *http.Client, sinfo *ServerInfo, apiPath string, apiMethod string, w http.ResponseWriter, r *http.Request) {
-// 	apiVersion := "v1" // Change this to correct version
-//     url := fmt.Sprintf("%s/%s%s", strings.TrimSuffix(sinfo.Address, "/"), apiVersion, apiPath)
-    
-//     req, err := http.NewRequest(apiMethod, url, r.Body)
-//     if err != nil {
-//         s.retError(w, fmt.Sprintf("Error creating http request: %v", err), http.StatusBadRequest)
-//         return
-//     }
-
-//     resp, err := client.Do(req)
-//     if err != nil {
-//         s.retError(w, fmt.Sprintf("Error making API call: %v", err), http.StatusBadRequest)
-//         return
-//     }
-
-//     defer resp.Body.Close()
-
-// 	// # TODO write second half
-// 	copyHeader(w.Header(), resp.Header)
-//     w.WriteHeader(resp.StatusCode)
-//     _, err = io.Copy(w, resp.Body)
-//     if err != nil {
-//         s.retError(w, fmt.Sprintf("Error parsing response: %v", err), http.StatusBadRequest)
-//     }
-// }
-
-// Error handler function
-func (s *Server) handleError(w http.ResponseWriter, msg string, status int, err error) {
-    if err != nil {
-        msg = fmt.Sprintf("%s: %v", msg, err)
-    }
-    s.retError(w, msg, status)
-}
-
-
-
 
 // func (s *Server) apiServerProxyFunc(apiPath string, apiMethod string) func(w http.ResponseWriter, r *http.Request) {
 // 	return func(w http.ResponseWriter, r *http.Request) {
@@ -379,100 +342,127 @@ func main() {
 }
 */
 
-// NewManagerServer returns a new manager server, given a listening address for the
-// server, and a DB connection string
-func NewManagerServer(listenAddr, dbString string) (*Server, error) {
-	db, err := managerdb.NewLocalSqliteDB(dbString)
-	if err != nil {
-		return nil, err
-	}
-	return &Server{
-		listenAddr: listenAddr,
-		db:         db,
-	}, nil
-}
+// // NewManagerServer returns a new manager server, given a listening address for the
+// // server, and a DB connection string
 
-func (s *Server) serverList(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Endpoint Hit: Server List")
-
+// readRequestBody reads and returns the request body as a string.
+func readRequestBody(r *http.Request) (string, error) {
 	buf := new(strings.Builder)
-
-	n, err := io.Copy(buf, r.Body)
-	if err != nil {
-		emsg := fmt.Sprintf("Error parsing data: %v", err.Error())
-		retError(w, emsg, http.StatusBadRequest)
-		return
-	}
-	data := buf.String()
-
-	var input ListServersRequest
-	if n == 0 {
-		input = ListServersRequest{}
-	} else {
-		err := json.Unmarshal([]byte(data), &input)
-		if err != nil {
-			emsg := fmt.Sprintf("Error parsing data: %v", err.Error())
-			retError(w, emsg, http.StatusBadRequest)
-			return
-		}
-	}
-
-	ret, err := s.ListServers(input)
-	if err != nil {
-		emsg := fmt.Sprintf("Error: %v", err.Error())
-		retError(w, emsg, http.StatusBadRequest)
-		return
-	}
-	cors(w, r)
-
-	je := json.NewEncoder(w)
-	err = je.Encode(ret)
-
-	if err != nil {
-		emsg := fmt.Sprintf("Error: %v", err.Error())
-		retError(w, emsg, http.StatusBadRequest)
-		return
-	}
+	_, err := io.Copy(buf, r.Body)
+	return buf.String(), err
 }
 
-func (s *Server) serverRegister(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Endpoint Hit: Server Create")
-
-	buf := new(strings.Builder)
-
-	n, err := io.Copy(buf, r.Body)
-	if err != nil {
-		emsg := fmt.Sprintf("Error parsing data: %v", err.Error())
-		retError(w, emsg, http.StatusBadRequest)
-		return
+// parseJSON parses the given string into a generic type T.
+func parseJSON[T any](data string) (T, error) {
+	var input T
+	if strings.TrimSpace(data) == "" {
+		return input, nil
 	}
-	data := buf.String()
-
-	var input RegisterServerRequest
-	if n == 0 {
-		input = RegisterServerRequest{}
-	} else {
-		err := json.Unmarshal([]byte(data), &input)
-		if err != nil {
-			emsg := fmt.Sprintf("Error parsing data: %v", err.Error())
-			retError(w, emsg, http.StatusBadRequest)
-			return
-		}
-	}
-
-	err = s.RegisterServer(input)
-	if err != nil {
-		emsg := fmt.Sprintf("Error: %v", err.Error())
-		retError(w, emsg, http.StatusBadRequest)
-		return
-	}
-
-	cors(w, r)
-	_, err = w.Write([]byte("SUCCESS"))
-
-	if err != nil {
-		emsg := fmt.Sprintf("Error: %v", err.Error())
-		retError(w, emsg, http.StatusBadRequest)
-		return
-	}
+	err := json.Unmarshal([]byte(data), &input)
+	return input, err
 }
+
+// writeJSON encodes and writes a JSON response with proper headers.
+func writeJSON(w http.ResponseWriter, v any) error {
+	w.Header().Set("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(v)
+}
+
+
+
+
+// func NewManagerServer(listenAddr, dbString string) (*Server, error) {
+// 	db, err := managerdb.NewLocalSqliteDB(dbString)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	return &Server{
+// 		listenAddr: listenAddr,
+// 		db:         db,
+// 	}, nil
+// }
+
+// func (s *Server) serverList(w http.ResponseWriter, r *http.Request) {
+// 	fmt.Println("Endpoint Hit: Server List")
+
+// 	buf := new(strings.Builder)
+
+// 	n, err := io.Copy(buf, r.Body)
+// 	if err != nil {
+// 		emsg := fmt.Sprintf("Error parsing data: %v", err.Error())
+// 		retError(w, emsg, http.StatusBadRequest)
+// 		return
+// 	}
+// 	data := buf.String()
+
+// 	var input ListServersRequest
+// 	if n == 0 {
+// 		input = ListServersRequest{}
+// 	} else {
+// 		err := json.Unmarshal([]byte(data), &input)
+// 		if err != nil {
+// 			emsg := fmt.Sprintf("Error parsing data: %v", err.Error())
+// 			retError(w, emsg, http.StatusBadRequest)
+// 			return
+// 		}
+// 	}
+
+// 	ret, err := s.ListServers(input)
+// 	if err != nil {
+// 		emsg := fmt.Sprintf("Error: %v", err.Error())
+// 		retError(w, emsg, http.StatusBadRequest)
+// 		return
+// 	}
+// 	cors(w, r)
+
+// 	je := json.NewEncoder(w)
+// 	err = je.Encode(ret)
+
+// 	if err != nil {
+// 		emsg := fmt.Sprintf("Error: %v", err.Error())
+// 		retError(w, emsg, http.StatusBadRequest)
+// 		return
+// 	}
+// }
+
+// func (s *Server) serverRegister(w http.ResponseWriter, r *http.Request) {
+// 	fmt.Println("Endpoint Hit: Server Create")
+
+// 	buf := new(strings.Builder)
+
+// 	n, err := io.Copy(buf, r.Body)
+// 	if err != nil {
+// 		emsg := fmt.Sprintf("Error parsing data: %v", err.Error())
+// 		retError(w, emsg, http.StatusBadRequest)
+// 		return
+// 	}
+// 	data := buf.String()
+
+// 	var input RegisterServerRequest
+// 	if n == 0 {
+// 		input = RegisterServerRequest{}
+// 	} else {
+// 		err := json.Unmarshal([]byte(data), &input)
+// 		if err != nil {
+// 			emsg := fmt.Sprintf("Error parsing data: %v", err.Error())
+// 			retError(w, emsg, http.StatusBadRequest)
+// 			return
+// 		}
+// 	}
+
+// 	err = s.RegisterServer(input)
+// 	if err != nil {
+// 		emsg := fmt.Sprintf("Error: %v", err.Error())
+// 		retError(w, emsg, http.StatusBadRequest)
+// 		return
+// 	}
+
+// 	cors(w, r)
+// 	_, err = w.Write([]byte("SUCCESS"))
+
+// 	if err != nil {
+// 		emsg := fmt.Sprintf("Error: %v", err.Error())
+// 		retError(w, emsg, http.StatusBadRequest)
+// 		return
+// 	}
+// }
