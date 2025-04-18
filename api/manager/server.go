@@ -160,6 +160,15 @@ func (s *Server) forwardRequest(client *http.Client, sinfo *ServerInfo, apiPath,
     return nil
 }
 
+// Error handler function
+func (s *Server) handleError(w http.ResponseWriter, msg string, status int, err error) {
+    if err != nil {
+        msg = fmt.Sprintf("%s: %v", msg, err)
+    }
+    log.Println(msg)
+    s.retError(w, msg, status)
+}
+
 // func (s *Server) proxyRequest(client *http.Client, sinfo *ServerInfo, apiPath string, apiMethod string, w http.ResponseWriter, r *http.Request) {
 // 	apiVersion := "v1" // Change this to correct version
 //     url := fmt.Sprintf("%s/%s%s", strings.TrimSuffix(sinfo.Address, "/"), apiVersion, apiPath)
