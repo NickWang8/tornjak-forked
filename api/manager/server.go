@@ -384,7 +384,17 @@ func (s *Server) serverList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	ret, err := s.ListServers(input)
+	if err != nil {
+		s.retError(w, fmt.Sprintf("Error listing servers: %v", err), http.StatusBadRequest)
+		return
+	}
 
+	cors(w, r)
+	if err := writeJSON(w, ret); err != nil {
+		s.retError(w, fmt.Sprintf("Error encoding response: %v", err), http.StatusBadRequest)
+	}
+}
 
 // func NewManagerServer(listenAddr, dbString string) (*Server, error) {
 // 	db, err := managerdb.NewLocalSqliteDB(dbString)
