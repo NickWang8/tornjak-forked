@@ -368,6 +368,21 @@ func writeJSON(w http.ResponseWriter, v any) error {
 	return json.NewEncoder(w).Encode(v)
 }
 
+// New serverList
+func (s *Server) serverList(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Endpoint Hit: Server List")
+
+	data, err := readRequestBody(r)
+	if err != nil {
+		s.retError(w, "Error reading request body", http.StatusBadRequest)
+		return
+	}
+
+	input, err := parseJSON[ListServersRequest](data)
+	if err != nil {
+		s.retError(w, fmt.Sprintf("Error parsing JSON: %v", err), http.StatusBadRequest)
+		return
+	}
 
 
 
