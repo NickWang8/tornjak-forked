@@ -396,6 +396,18 @@ func (s *Server) serverList(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *Server) serverRegister(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Endpoint Hit: Server Create")
+
+	data, err := readRequestBody(r)
+	if err != nil {
+		s.retError(w, "Error reading request body", http.StatusBadRequest)
+		return
+	}
+
+	// TODO
+}
+
 // func NewManagerServer(listenAddr, dbString string) (*Server, error) {
 // 	db, err := managerdb.NewLocalSqliteDB(dbString)
 // 	if err != nil {
