@@ -405,7 +405,18 @@ func (s *Server) serverRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO
+	input, err := parseJSON[RegisterServerRequest](data)
+	if err != nil {
+		s.retError(w, fmt.Sprintf("Error parsing JSON: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	if err := s.RegisterServer(input); err != nil {
+		s.retError(w, fmt.Sprintf("Error registering server: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	// TODO CORS function
 }
 
 // func NewManagerServer(listenAddr, dbString string) (*Server, error) {
